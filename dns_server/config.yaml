@@ -1,1 +1,36 @@
 # Zone data, replication config, rate-limit defaults
+# Listen & metrics
+#listen_host: 0.0.0.0
+listen_host: 127.0.0.1
+listen_port: 1053 # >1024 so it works on Windows without admin
+metrics_host: 0.0.0.0
+metrics_port: 8000
+
+
+# Zone (authoritative subset for the lab)
+origin: example.test.
+records:
+  A:
+    www: 203.0.113.10
+    api: 203.0.113.11
+  TXT:
+    text: "hello-ecs235a"
+
+
+# Rate limiting (base/static). Adaptive will overwrite at runtime when enabled.
+ratelimit:
+  enabled: false
+  #enabled: true
+  per_ip_qps: 50 # base allowed queries per second per client
+  burst: 100 # token bucket max burst
+
+
+# Adaptive controller
+adaptive:
+  enabled: true
+  ewma_alpha: 0.3 # smoothing
+  qps_high: 2000 # anomaly threshold (global)
+  nxdomain_ratio_high: 0.3 # anomaly threshold
+  upscale_factor: 0.6 # lower limits when under attack (e.g., 60% of base)
+  downscale_recovery: 1.1 # slowly relax limits when healthy
+  cooldown_seconds: 10
