@@ -1,0 +1,173 @@
+Test 1 – Baseline sanity (no rate limit, no adaptive)
+
+Edit dns_server/config.yaml to this:
+
+ratelimit:
+  enabled: false
+  per_ip_qps: 50
+  burst: 100
+
+adaptive:
+  enabled: false
+  ewma_alpha: 0.3
+  qps_high: 2000
+  nxdomain_ratio_high: 0.3
+  upscale_factor: 0.6
+  downscale_recovery: 1.1
+  cooldown_seconds: 10
+
+
+Restart the server:
+
+python -m dns_server.server
+
+
+In another WSL terminal, run:
+
+dig @127.0.0.1 -p 1053 www.example.test A
+dig @127.0.0.1 -p 1053 text.example.test TXT
+dig @127.0.0.1 -p 1053 nope.example.test A
+
+
+Check metrics:
+
+curl http://127.0.0.1:8000/metrics
+
+
+You should see JSON like:
+
+{
+  "queries_total": 3,
+  "responses_noerror": 2,
+  "responses_nxdomain": 1,
+  "dropped_ratelimit": 0,
+  "current_per_ip_qps": 50,
+  "current_burst": 100,
+  "ewma_qps": 0.0,
+  "nxd_ratio": 0.0
+}
+
+
+If that all works, your baseline is solid.
+
+============================================================================
+
+Test 2 – Static rate limiting only
+
+Goal: verify PerIPRateLimiter and REFUSED logic.
+
+Change config to enable ratelimit, but keep adaptive off:
+
+ratelimit:
+  enabled: true
+  per_ip_qps: 1    # small number so we can hit the limit easily
+  burst: 1
+
+adaptive:
+  enabled: false
+  ...
+
+
+Restart server:
+
+python -m dns_server.server
+
+
+In another WSL terminal, hammer it a bit:
+
+# Fire 50 queries as fast as the shell can go
+for i in {1..50}; do
+  dig @127.0.0.1 -p 1053 www.example.test A +short >/dev/null &
+done
+wait
+
+Expected behavior:
+
+In the server log, you’ll see a bunch of RX packet from ('127.0.0.1', someport) messages.
+
+After roughly per_ip_qps + burst queries in a short window, you should start seeing REFUSED being sent.
+
+You can make it clearer by watching metrics:
+
+watch -n 1 'curl -s http://127.0.0.1:8000/metrics'
+
+
+You should see:
+
+queries_total increasing.
+
+dropped_ratelimit increasing from 0 once the bucket empties.
+
+Sample Output:
+{"queries_total":50,"responses_noerror":1,"responses_nxdomain":0,"dropped_ratelimit":49,"current_per_ip_qps":1,"current_burst":1,"ewma_qps":0.0,"nxd_ratio":0.0}
+
+======================================================================================================================================================================
+
+Test 3 – Turn on adaptive detector + verify it fires
+
+Goal: check that EWMAAnomalyDetector.update() is being called and that it actually modifies the rate limiter.
+
+Config: enable both ratelimit and adaptive, and use lower thresholds so your laptop can trigger them:
+
+ratelimit:
+  enabled: true
+  per_ip_qps: 50
+  burst: 100
+
+adaptive:
+  enabled: true
+  ewma_alpha: 0.3
+  qps_high: 200      # much lower than 2000
+  nxdomain_ratio_high: 0.3
+  upscale_factor: 0.6
+  downscale_recovery: 1.05
+  cooldown_seconds: 5
+
+
+Restart server.
+
+From another terminal, generate “naughty” traffic with lots of NXDOMAIN and fairly high QPS:
+
+# lots of NXDOMAINs
+for i in {1..200}; do
+  dig @127.0.0.1 -p 1053 random$i.example.test A +short >/dev/null &
+  sleep 0.02   # 20ms between queries → flood lasts ~4 seconds
+done
+wait
+
+
+While that runs (or right after), watch metrics:
+
+while true; do
+    date '+%H:%M:%S'
+    curl -s http://127.0.0.1:8000/metrics
+    echo ""
+    sleep 1
+done
+
+
+What you should expect to see over a few seconds:
+
+queries_total climbing.
+
+responses_nxdomain climbing rapidly.
+
+ewma_qps rising and then smoothing.
+
+nxd_ratio going up (since almost everything is NXDOMAIN).
+
+So after the anomaly triggers, you should see:
+
+current_per_ip_qps drop from 50 to 30 (50 * 0.6).
+
+Under continued load, more dropped_ratelimit than before.
+
+At the server side, you will also a print like this:
+DNS server listening on 127.0.0.1:1053 (origin example.test.)
+Metrics at http://0.0.0.0:8000/metrics
+RX packet from ('127.0.0.1', 60730)
+RX packet from ('127.0.0.1', 50173)
+>>> ADAPTIVE: anomaly detected, adjusting limits
+RX packet from ('127.0.0.1', 56381)
+
+If that happens → congrats, adaptive control loop is alive 🎉

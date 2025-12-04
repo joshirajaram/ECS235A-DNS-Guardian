@@ -19,7 +19,7 @@ records:
 
 # Rate limiting (base/static). Adaptive will overwrite at runtime when enabled.
 ratelimit:
-  enabled: false
+  enabled: true
   #enabled: true
   per_ip_qps: 50 # base allowed queries per second per client
   burst: 100 # token bucket max burst
@@ -29,8 +29,8 @@ ratelimit:
 adaptive:
   enabled: true
   ewma_alpha: 0.3 # smoothing
-  qps_high: 2000 # anomaly threshold (global)
+  qps_high: 200 # anomaly threshold (global)
   nxdomain_ratio_high: 0.3 # anomaly threshold
   upscale_factor: 0.6 # lower limits when under attack (e.g., 60% of base)
-  downscale_recovery: 1.1 # slowly relax limits when healthy
-  cooldown_seconds: 10
+  downscale_recovery: 1.05 # slowly relax limits when healthy
+  cooldown_seconds: 5

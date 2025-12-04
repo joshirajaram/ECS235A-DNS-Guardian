@@ -113,6 +113,7 @@ class DNSHandler(socketserver.BaseRequestHandler):
             metrics.gauges['ewma_qps'] = obs['qps']
             metrics.gauges['nxd_ratio'] = obs['nxd_ratio']
             if obs['anomaly']:
+                print(">>> ADAPTIVE: anomaly detected, adjusting limits")
                 base_qps = CFG['ratelimit']['per_ip_qps']
                 new_qps = max(1.0, base_qps * adaptive_cfg['upscale_factor'])
                 rl.set_limits(new_qps, CFG['ratelimit']['burst'])
