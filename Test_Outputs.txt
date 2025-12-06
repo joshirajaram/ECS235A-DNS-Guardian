@@ -171,3 +171,13 @@ RX packet from ('127.0.0.1', 50173)
 RX packet from ('127.0.0.1', 56381)
 
 If that happens → congrats, adaptive control loop is alive 🎉
+
+================================================================
+
+Running everything on Docker
+
+1. Running 1 DNS server on docker --- DONE
+command: 
+docker-compose up --build
+OR
+docker compose build dns1

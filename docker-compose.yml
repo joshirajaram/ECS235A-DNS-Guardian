@@ -1,1 +1,43 @@
 # Spins up DNS replicas, proxy, dashboard, and load simulator
+services:
+  dns1:
+    build:
+      context: .
+      dockerfile: Dockerfile.dns
+    container_name: dns1
+    ports:
+      #- "1053:1053/udp"   # host:container for DNS
+      - "8000:8000"       # host:container for metrics
+    restart: unless-stopped
+
+  dns2:
+    build:
+      context: .
+      dockerfile: Dockerfile.dns
+    container_name: dns2
+    ports:
+      #- "1054:1053/udp"     # DNS from host → dns2 (for debugging)
+      - "8001:8000"         # metrics for dns2
+    restart: unless-stopped
+
+  dns3:
+    build:
+      context: .
+      dockerfile: Dockerfile.dns
+    container_name: dns3
+    ports:
+      #- "1055:1053/udp"     # DNS from host → dns3 (additional server)
+      - "8002:8000"         # metrics for dns3
+    restart: unless-stopped
+
+  proxy:
+    build:
+      context: ./proxy
+      dockerfile: Dockerfile        # in proxy/
+    container_name: dns-proxy
+    depends_on:
+      - dns1
+      - dns2
+      - dns3
+    ports:
+      - "1053:1053/udp"   # host → proxy → dns1/dns2/dns3
