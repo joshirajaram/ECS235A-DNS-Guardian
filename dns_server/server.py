@@ -57,9 +57,8 @@ class DNSHandler(socketserver.BaseRequestHandler):
         print(f"RX packet from {self.client_address}")
         data, sock = self.request
         client_ip, client_port = self.client_address
-        now = time.time()
+        start_ts = time.time()
         metrics.counters['queries_total'] += 1
-
 
         if CFG['ratelimit']['enabled'] and not rl.allow(client_ip):
             metrics.counters['dropped_ratelimit'] += 1
@@ -82,17 +81,19 @@ class DNSHandler(socketserver.BaseRequestHandler):
         qname = str(req.q.qname).lower()
         qtype = QTYPE[req.q.qtype]
 
-
         # Cache lookup
         cache_key = (qname, qtype)
         cached = CACHE.get(cache_key)
         if cached:
             reply = cached
+            metrics.counters['cache_hits'] += 1
         else:
+            metrics.counters['cache_misses'] += 1
             reply = req.reply()
             # Only serve under the configured origin (authoritative subset)
             if not qname.endswith(ORIGIN):
                 reply.header.rcode = RCODE.NXDOMAIN
+                metrics.counters['responses_nxdomain'] += 1
             else:
                 label = qname.replace('.' + ORIGIN, '').rstrip('.')
                 if qtype == 'A' and label in ZONE_A:
@@ -126,6 +127,25 @@ class DNSHandler(socketserver.BaseRequestHandler):
                     cur = min(base, cur * adaptive_cfg['downscale_recovery'])
                     rl.set_limits(cur, burst)
                     metrics.gauges['current_per_ip_qps'] = cur
+
+        # --- NEW: latency + cache_hit_ratio update ---
+        end_ts = time.time()
+        latency_ms = (end_ts - start_ts) * 1000.0
+        metrics.counters['latency_sum_ms'] += latency_ms
+        metrics.counters['latency_count'] += 1
+
+        # average latency gauge
+        if metrics.counters['latency_count'] > 0:
+            metrics.gauges['avg_latency_ms'] = (
+                metrics.counters['latency_sum_ms'] / metrics.counters['latency_count']
+            )
+
+        # cache hit ratio gauge
+        total_cache = metrics.counters['cache_hits'] + metrics.counters['cache_misses']
+        if total_cache > 0:
+            metrics.gauges['cache_hit_ratio'] = (
+                metrics.counters['cache_hits'] / total_cache
+            )
 
         # Send reply
         try:

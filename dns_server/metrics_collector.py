@@ -13,12 +13,18 @@ class Metrics:
             'responses_noerror': 0,
             'responses_nxdomain': 0,
             'dropped_ratelimit': 0,
+            'cache_hits': 0,
+            'cache_misses': 0,
+            'latency_count': 0,
+            'latency_sum_ms': 0.0,
         }
         self.gauges = {
             'current_per_ip_qps': 0,
             'current_burst': 0,
             'ewma_qps': 0.0,
             'nxd_ratio': 0.0,
+            'avg_latency_ms': 0.0,
+            'cache_hit_ratio': 0.0,
         }
 
 
