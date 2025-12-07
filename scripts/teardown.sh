@@ -4,10 +4,10 @@
 #!/usr/bin/env bash
 
 echo "[*] Stopping containers..."
-docker compose down
+docker-compose down
 
 echo "[*] Removing old containers, networks, volumes..."
-docker system prune -f
+docker-system prune -f
 
 echo "[*] Teardown complete."
 

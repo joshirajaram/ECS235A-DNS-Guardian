@@ -18,20 +18,50 @@ records:
   TXT:
     text: "hello-ecs235a"
 
+#===========================================================
+# Want to TEST 3 Modes:
+#
+# 1. Baseline (No Rate Limiting, no adaptive)
+#      ratelimit:
+#        enabled: false
+#      adaptive:
+#        enabled: false
+#
+# 2. Static Rate Limiting (fixed QPS per IP and No adaptive)
+#      ratelimit:
+#        enabled: true
+#        per_ip_qps: 20
+#        burst: 40
+#      adaptive:
+#        enabled: false
+#
+# 3. Adaptive Rate Limiting (adaptive controller enabled, our full system)
+#      ratelimit:
+#        enabled: true
+#        per_ip_qps: 20
+#        burst: 40
+#      adaptive:
+#        enabled: true
+#        ewma_alpha: 0.3
+#        qps_high: 20
+#        nxdomain_ratio_high: 0.3
+#        upscale_factor: 0.6
+#        downscale_recovery: 1.05
+#        cooldown_seconds: 5
+#===========================================================
 
 # Rate limiting (base/static). Adaptive will overwrite at runtime when enabled.
 ratelimit:
   enabled: true
-  #enabled: true
-  per_ip_qps: 50 # base allowed queries per second per client
-  burst: 100 # token bucket max burst
+  per_ip_qps: 20 # base allowed queries per second per client
+  burst: 40 # token bucket max burst
 
 
 # Adaptive controller
 adaptive:
-  enabled: true
+  enabled: false
   ewma_alpha: 0.3 # smoothing
-  qps_high: 200 # anomaly threshold (global)
+  qps_high: 20 # anomaly threshold (global)
   nxdomain_ratio_high: 0.3 # anomaly threshold
   upscale_factor: 0.6 # lower limits when under attack (e.g., 60% of base)
   downscale_recovery: 1.05 # slowly relax limits when healthy
