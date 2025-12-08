@@ -236,8 +236,8 @@ def main():
     # Clean previous containers before starting new run
     run_teardown()
 
-    # Bring up the cluster
-    try_docker_compose_up()
+    # # Bring up the cluster
+    # try_docker_compose_up()
 
     # Define scenarios (aligned with teammate's examples)
     # 1) Flood: 100 QPS for 30 seconds

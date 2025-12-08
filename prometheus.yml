@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'dns-server-1'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['dns1:8000']
+        labels:
+          replica: 'dns1'
+
+  - job_name: 'dns-server-2'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['dns2:8000']
+        labels:
+          replica: 'dns2'
+
+  - job_name: 'dns-server-3'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['dns3:8000']
+        labels:
+          replica: 'dns3'
