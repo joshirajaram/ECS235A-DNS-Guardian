@@ -21,8 +21,6 @@ export default function TrafficStats({ metrics }) {
       icon: Activity,
       color: 'text-blue-500',
       bgColor: 'bg-blue-100',
-      trend: '+12%',
-      trendUp: true,
     },
     {
       title: 'Successful Responses',
@@ -50,7 +48,7 @@ export default function TrafficStats({ metrics }) {
     },
     {
       title: 'Current QPS',
-      value: metrics.ewma_qps.toFixed(0),
+      value: metrics.ewma_qps.toFixed(3),
       icon: Zap,
       color: 'text-purple-500',
       bgColor: 'bg-purple-100',
