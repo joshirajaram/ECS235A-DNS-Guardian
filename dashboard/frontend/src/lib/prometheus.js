@@ -143,17 +143,24 @@ export async function fetchCurrentMetrics() {
       dropped_ratelimit: getValue(droppedRatelimit),
       cache_hits,
       cache_misses,
-      ewma_qps: getValue(ewmaQps),
-      current_per_ip_qps: getValue(currentPerIpQps),
-      current_burst: getValue(currentBurst),
-      avg_latency_ms: getValue(avgLatencyMs),
+      ewma_qps: Math.round(getValue(ewmaQps) * 1000) / 1000,
+      current_per_ip_qps: Math.round(getValue(currentPerIpQps)),
+      current_burst: Math.round(getValue(currentBurst)),
+      avg_latency_ms: Math.round(getValue(avgLatencyMs) * 1000) / 1000,
       cache_hit_ratio: cache_hits + cache_misses > 0 
-        ? cache_hits / (cache_hits + cache_misses) 
+        ? Math.round((cache_hits / (cache_hits + cache_misses)) * 1000) / 1000
         : 0,
       nxd_ratio: queries_total > 0 
-        ? responses_nxdomain / queries_total 
+        ? Math.round((responses_nxdomain / queries_total) * 1000) / 1000
         : 0,
-      under_attack: queries_total > 0 && (responses_nxdomain / queries_total) > 0.3,
+      // Attack detection: matches backend heuristic_detector.py logic
+      // Triggers on: high QPS alone OR (high NXDOMAIN ratio + moderate QPS)
+      under_attack: (() => {
+        const ewma = getValue(ewmaQps);
+        const nxdRatio = queries_total > 0 ? responses_nxdomain / queries_total : 0;
+        const qpsHigh = 20; // Should match config.yaml adaptive.qps_high
+        return (ewma > qpsHigh) || (nxdRatio > 0.3 && ewma > qpsHigh / 4);
+      })(),
       adaptive_enabled: true,
       replicas: replicas.length > 0 ? replicas : [
         { id: 'dns1', name: 'DNS Server 1', status: 'healthy', queries: 0, health: 100 },

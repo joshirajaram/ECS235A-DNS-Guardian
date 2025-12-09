@@ -130,7 +130,8 @@ function App() {
       };
     }
     
-    if (metrics && (metrics.ewma_qps > 2000 || metrics.dropped_ratelimit > 500)) {
+    // High Load: moderate QPS (above 50% of attack threshold) or significant drops
+    if (metrics && (metrics.ewma_qps > 10 || metrics.dropped_ratelimit > 50)) {
       return {
         status: 'warning',
         label: 'High Load',

@@ -73,13 +73,18 @@ def query_flood(host: str, port: int, qps: int, duration: int, threads: int):
 
     stats = AttackStats()
     domain = "example.test."
+    nxdomain = "nonexistent.test."  # Domain that generates NXDOMAIN responses
     subdomains = ["www", "api"]
     total = qps * duration
     delay = threads / qps
 
     def worker():
         for _ in range(total // threads):
-            qname = f"{random.choice(subdomains)}.{domain}"
+            # Randomly choose between valid domain and NXDOMAIN-generating domain
+            if random.random() < 0.3:  # 30% chance of NXDOMAIN query
+                qname = f"{random.choice(subdomains)}.{nxdomain}"
+            else:
+                qname = f"{random.choice(subdomains)}.{domain}"
             success, rcode = send_query(host, port, qname)
             stats.update(success, rcode)
             time.sleep(delay)
@@ -99,12 +104,18 @@ def burst_attack(host: str, port: int, burst_size: int, bursts: int, interval: f
 
     stats = AttackStats()
     domain = "example.test."
+    nxdomain = "nonexistent.test."  # Domain that generates NXDOMAIN responses
 
     for i in range(bursts):
         print(f"    Burst {i+1}/{bursts}...")
 
         def send(_):
-            success, rcode = send_query(host, port, f"www.{domain}")
+            # Randomly choose between valid domain and NXDOMAIN-generating domain
+            if random.random() < 0.3:  # 30% chance of NXDOMAIN query
+                qname = f"www.{nxdomain}"
+            else:
+                qname = f"www.{domain}"
+            success, rcode = send_query(host, port, qname)
             stats.update(success, rcode)
 
         with ThreadPoolExecutor(max_workers=min(burst_size, 100)) as ex:

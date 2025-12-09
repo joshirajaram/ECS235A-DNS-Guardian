@@ -59,7 +59,7 @@ ratelimit:
 
 # Adaptive controller
 adaptive:
-  enabled: false
+  enabled: true
   ewma_alpha: 0.3 # smoothing
   qps_high: 20 # anomaly threshold (global)
   nxdomain_ratio_high: 0.3 # anomaly threshold

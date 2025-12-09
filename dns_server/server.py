@@ -87,6 +87,7 @@ class DNSHandler(socketserver.BaseRequestHandler):
         if cached:
             reply = cached
             metrics.counters['cache_hits'] += 1
+            metrics.counters['responses_noerror'] += 1  # Cache hits are successful responses
         else:
             metrics.counters['cache_misses'] += 1
             reply = req.reply()

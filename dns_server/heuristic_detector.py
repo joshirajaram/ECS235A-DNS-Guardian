@@ -24,9 +24,18 @@ class EWMAAnomalyDetector:
         nxd = totals.get('responses_nxdomain', 0)
         ok = totals.get('responses_noerror', 0)
 
-
         dq = q_total - self._last_total
-        self.ewma_qps = self.alpha * (dq / dt) + (1 - self.alpha) * self.ewma_qps
+        
+        # Apply time-based decay: if no queries came in, decay EWMA based on elapsed time
+        # This ensures EWMA drops even when traffic stops
+        if dq == 0 and dt > 0.1:
+            # Decay factor: how much to reduce EWMA when idle
+            # Decays to ~37% after 1 second of no traffic
+            decay_factor = (1 - self.alpha) ** dt
+            self.ewma_qps = self.ewma_qps * decay_factor
+        else:
+            self.ewma_qps = self.alpha * (dq / dt) + (1 - self.alpha) * self.ewma_qps
+        
         dnxd = max(0, nxd - self._last_nxd)
         dok = max(1, ok - self._last_noerror)
         ratio = dnxd / (dnxd + dok)
